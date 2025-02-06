@@ -10,6 +10,7 @@ import triton
 import triton.language as tl
 
 from .utils import get_lora_op_configs
+from vllm.stream_pool_manager import StreamPoolManager
 
 
 @triton.jit
@@ -121,24 +122,25 @@ def _bgmv_shrink(
         META["SPLIT_K"],
         batches,
     )
-    _bgmv_shrink_kernel[grid](
-        inputs,
-        lora_a_weights,
-        output_tensor,
-        N,
-        K,
-        lora_indices_tensor,
-        scaling,
-        inputs.stride(0),
-        inputs.stride(1),
-        lora_a_weights.stride(0),
-        lora_a_weights.stride(1),
-        lora_a_weights.stride(2),
-        output_tensor.stride(0),
-        output_tensor.stride(1),
-        BLOCK_N=BLOCK_N,
-        **config,
-    )
+    with torch.cuda.stream(StreamPoolManager.instance().lora_stream):
+        _bgmv_shrink_kernel[grid](
+            inputs,
+            lora_a_weights,
+            output_tensor,
+            N,
+            K,
+            lora_indices_tensor,
+            scaling,
+            inputs.stride(0),
+            inputs.stride(1),
+            lora_a_weights.stride(0),
+            lora_a_weights.stride(1),
+            lora_a_weights.stride(2),
+            output_tensor.stride(0),
+            output_tensor.stride(1),
+            BLOCK_N=BLOCK_N,
+            **config
+        )
     return
 
 

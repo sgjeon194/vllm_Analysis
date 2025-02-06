@@ -10,6 +10,7 @@ import triton
 import triton.language as tl
 
 from .utils import get_lora_op_configs
+from vllm.stream_pool_manager import StreamPoolManager
 
 
 @triton.jit
@@ -137,26 +138,27 @@ def _bgmv_expand(
         META["SPLIT_N"],
         batches,
     )
-    _bgmv_expand_kernel[grid](
-        inputs,
-        lora_b_weights,
-        output_tensor,
-        N,
-        K,
-        lora_indices_tensor,
-        inputs.stride(0),
-        inputs.stride(1),
-        lora_b_weights.stride(0),
-        lora_b_weights.stride(1),
-        lora_b_weights.stride(2),
-        output_tensor.stride(0),
-        output_tensor.stride(1),
-        BLOCK_K=BLOCK_K,
-        EVEN_K=EVEN_K,
-        ADD_INPUTS=ADD_INPUTS,
-        CAST_TYPE=CAST_TYPE,
-        **config,
-    )
+    with torch.cuda.stream(StreamPoolManager.instance().lora_stream):
+        _bgmv_expand_kernel[grid](
+            inputs,
+            lora_b_weights,
+            output_tensor,
+            N,
+            K,
+            lora_indices_tensor,
+            inputs.stride(0),
+            inputs.stride(1),
+            lora_b_weights.stride(0),
+            lora_b_weights.stride(1),
+            lora_b_weights.stride(2),
+            output_tensor.stride(0),
+            output_tensor.stride(1),
+            BLOCK_K=BLOCK_K,
+            EVEN_K=EVEN_K,
+            ADD_INPUTS=ADD_INPUTS,
+            CAST_TYPE=CAST_TYPE,
+            **config,
+        )
     return
 
 

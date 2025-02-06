@@ -749,6 +749,7 @@ class MergedColumnParallelLinearWithLoRA(ColumnParallelLinearWithLoRA):
 
     def apply(self, x: torch.Tensor,
               bias: Optional[torch.Tensor]) -> torch.Tensor:
+        y = torch.zeros(x.shape[0], self.base_layer.weight.shape[0], dtype=torch.float16, device='cuda')
         torch.cuda.nvtx.range_push("Base Up")
         output = self.base_layer.quant_method.apply(self.base_layer, x, bias)
         torch.cuda.nvtx.range_pop()
@@ -761,8 +762,10 @@ class MergedColumnParallelLinearWithLoRA(ColumnParallelLinearWithLoRA):
                 self.bias_stacked,
             )
         self.punica_wrapper.add_lora_packed_nslice(
-            output, x, self.lora_a_stacked, self.lora_b_stacked, 1.0,
+            y, x, self.lora_a_stacked, self.lora_b_stacked, 1.0,
             (self.output_dim, self.output_dim))
+        output += y
+        #print("mer")
         return output
 
     @classmethod
