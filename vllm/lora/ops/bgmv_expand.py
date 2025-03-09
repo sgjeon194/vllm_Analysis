@@ -138,6 +138,7 @@ def _bgmv_expand(
         META["SPLIT_N"],
         batches,
     )
+    StreamPoolManager.instance().lora_stream.wait_stream(torch.cuda.current_stream())
     with torch.cuda.stream(StreamPoolManager.instance().lora_stream):
         _bgmv_expand_kernel[grid](
             inputs,
