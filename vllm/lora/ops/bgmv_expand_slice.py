@@ -149,6 +149,7 @@ def _bgmv_expand_slice(
         META["SPLIT_N"],
         batches,
     )
+    StreamPoolManager.instance().lora_stream.wait_stream(torch.cuda.current_stream())
     with torch.cuda.stream(StreamPoolManager.instance().lora_stream):
         _bgmv_expand_slice_kernel[grid](
             inputs,
@@ -171,6 +172,9 @@ def _bgmv_expand_slice(
             CAST_TYPE=CAST_TYPE,
             **config,
         )
+        
+    torch.cuda.current_stream().wait_stream(StreamPoolManager.instance().lora_stream)
+    # StreamPoolManager.instance().graph_capture_stream.wait_stream(StreamPoolManager.instance().lora_stream)
     return
 
 

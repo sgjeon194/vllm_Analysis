@@ -159,6 +159,8 @@ def _bgmv_expand(
             CAST_TYPE=CAST_TYPE,
             **config,
         )
+    torch.cuda.current_stream().wait_stream(StreamPoolManager.instance().lora_stream)
+    
     return
 
 

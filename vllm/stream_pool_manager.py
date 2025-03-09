@@ -16,4 +16,5 @@ class SingletonInstance:
 class StreamPoolManager(SingletonInstance):
     def __init__(self):
         self.lora_stream = torch.cuda.Stream()
+        self.graph_capture_stream = torch.cuda.Stream()
     

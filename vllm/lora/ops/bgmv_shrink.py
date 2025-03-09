@@ -63,7 +63,7 @@ def _bgmv_shrink_kernel(
             current_k[None, :] * lora_n_stride,
             mask=b_ptr_mask,
             other=0.0,
-        )  # [BLOCK_N,BLOCK_K]
+        )  # [BLOCK_N, BLOCK_K]
 
         accumulator += tl.sum(tiled_a * tiled_b, 1)
     accumulator *= scaling
@@ -122,6 +122,7 @@ def _bgmv_shrink(
         META["SPLIT_K"],
         batches,
     )
+    StreamPoolManager.instance().lora_stream.wait_stream(torch.cuda.current_stream())
     with torch.cuda.stream(StreamPoolManager.instance().lora_stream):
         _bgmv_shrink_kernel[grid](
             inputs,
@@ -141,6 +142,8 @@ def _bgmv_shrink(
             BLOCK_N=BLOCK_N,
             **config
         )
+    torch.cuda.current_stream().wait_stream(StreamPoolManager.instance().lora_stream)
+    # StreamPoolManager.instance().graph_capture_stream.wait_stream(StreamPoolManager.instance().lora_stream)
     return
 
 
