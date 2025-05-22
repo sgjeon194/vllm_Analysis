@@ -40,6 +40,8 @@ def _bgmv_shrink_kernel(
     pid_sk = tl.program_id(axis=0)
     cur_batch = tl.program_id(axis=1)
     lora_index = tl.load(lora_indices + cur_batch)
+    # if pid_sk == 0 and cur_batch == 0:
+    #     tl.device_print(" ", tl.num_programs(0))
     if lora_index == -1:
         return
 
@@ -122,28 +124,27 @@ def _bgmv_shrink(
         META["SPLIT_K"],
         batches,
     )
-    StreamPoolManager.instance().lora_stream.wait_stream(torch.cuda.current_stream())
-    with torch.cuda.stream(StreamPoolManager.instance().lora_stream):
-        _bgmv_shrink_kernel[grid](
-            inputs,
-            lora_a_weights,
-            output_tensor,
-            N,
-            K,
-            lora_indices_tensor,
-            scaling,
-            inputs.stride(0),
-            inputs.stride(1),
-            lora_a_weights.stride(0),
-            lora_a_weights.stride(1),
-            lora_a_weights.stride(2),
-            output_tensor.stride(0),
-            output_tensor.stride(1),
-            BLOCK_N=BLOCK_N,
-            **config
-        )
-    torch.cuda.current_stream().wait_stream(StreamPoolManager.instance().lora_stream)
-    # StreamPoolManager.instance().graph_capture_stream.wait_stream(StreamPoolManager.instance().lora_stream)
+    # StreamPoolManager.instance().lora_stream.wait_stream(torch.cuda.current_stream())
+    # with torch.cuda.stream(StreamPoolManager.instance().lora_stream):
+    _bgmv_shrink_kernel[grid](
+        inputs,
+        lora_a_weights,
+        output_tensor,
+        N,
+        K,
+        lora_indices_tensor,
+        scaling,
+        inputs.stride(0),
+        inputs.stride(1),
+        lora_a_weights.stride(0),
+        lora_a_weights.stride(1),
+        lora_a_weights.stride(2),
+        output_tensor.stride(0),
+        output_tensor.stride(1),
+        BLOCK_N=BLOCK_N,
+        **config
+    )
+    # torch.cuda.current_stream().wait_stream(StreamPoolManager.instance().lora_stream)
     return
 
 

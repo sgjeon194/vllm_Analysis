@@ -73,7 +73,7 @@ def create_dummy_test_prompts(
     #prompt = "The quick brown fox"
     sample_parms = SamplingParams(temperature=0.0,
                            logprobs=1,
-                           prompt_logprobs=1,
+                        #    prompt_logprobs=1,
                            max_tokens=128,
                            stop_token_ids=[32003])
     
@@ -111,13 +111,20 @@ def process_requests(engine: LLMEngine,
 
     step = 0
     while engine.has_unfinished_requests():
+        step_start = torch.cuda.Event(enable_timing=True)
+        step_end = torch.cuda.Event(enable_timing=True)
+        
+        step_start.record()
         torch.cuda.nvtx.range_push("Step")
         request_outputs: List[RequestOutput] = engine.step()
         torch.cuda.nvtx.range_pop()
+        step_end.record()
+        print(f"step {i} : {step_start.elapsed_time(step_end)} ms")
+        
         if request_outputs == None:
             return
-        # loop += 1
-        # print(loop)
+        loop += 1
+        print(loop)
         
         step += 1
         print(f"Step {step}")
@@ -152,9 +159,9 @@ def initialize_engine(batch_size : int, prompt_len : int) -> LLMEngine:
                              max_num_seqs=batch_size,
                              max_model_len=prompt_len + 10,
                              max_num_batched_tokens=batch_size * (prompt_len + 10),
-                             gpu_memory_utilization=0.9,
+                             gpu_memory_utilization=0.7,
                              enable_chunked_prefill=False,
-                             enforce_eager=True
+                             enforce_eager=False # False = Cudagraph O True = Cudagraph X
     )
     return LLMEngine.from_engine_args(engine_args)
 
@@ -174,7 +181,8 @@ def main():
     #lora_path = snapshot_download(repo_id="RikiyaT/Meta-Llama-3.1-8B-LoRA-test")
     #test_prompts = create_test_prompts(lora_path)
     
-
+    print(f"batch size : {batch_size}")
+    print(f"prompt len : {prompt_len}")
     #test_prompts = create_dummy_test_prompts(batch_size, prompt_len, "")
     test_prompts = create_dummy_test_prompts(batch_size, prompt_len, lora_path)
     

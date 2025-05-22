@@ -149,32 +149,31 @@ def _bgmv_expand_slice(
         META["SPLIT_N"],
         batches,
     )
-    StreamPoolManager.instance().lora_stream.wait_stream(torch.cuda.current_stream())
-    with torch.cuda.stream(StreamPoolManager.instance().lora_stream):
-        _bgmv_expand_slice_kernel[grid](
-            inputs,
-            lora_b_weights,
-            output_tensor,
-            N,
-            K,
-            lora_indices_tensor,
-            inputs.stride(0),
-            inputs.stride(1),
-            lora_b_weights.stride(0),
-            lora_b_weights.stride(1),
-            lora_b_weights.stride(2),
-            output_tensor.stride(0),
-            output_tensor.stride(1),
-            slice_offset,
-            BLOCK_K=BLOCK_K,
-            EVEN_K=EVEN_K,
-            ADD_INPUTS=ADD_INPUTS,
-            CAST_TYPE=CAST_TYPE,
-            **config,
-        )
-        
-    torch.cuda.current_stream().wait_stream(StreamPoolManager.instance().lora_stream)
-    # StreamPoolManager.instance().graph_capture_stream.wait_stream(StreamPoolManager.instance().lora_stream)
+    # StreamPoolManager.instance().lora_stream.wait_stream(torch.cuda.current_stream())
+    # with torch.cuda.stream(StreamPoolManager.instance().lora_stream):
+    _bgmv_expand_slice_kernel[grid](
+        inputs,
+        lora_b_weights,
+        output_tensor,
+        N,
+        K,
+        lora_indices_tensor,
+        inputs.stride(0),
+        inputs.stride(1),
+        lora_b_weights.stride(0),
+        lora_b_weights.stride(1),
+        lora_b_weights.stride(2),
+        output_tensor.stride(0),
+        output_tensor.stride(1),
+        slice_offset,
+        BLOCK_K=BLOCK_K,
+        EVEN_K=EVEN_K,
+        ADD_INPUTS=ADD_INPUTS,
+        CAST_TYPE=CAST_TYPE,
+        **config,
+    )
+    
+    # torch.cuda.current_stream().wait_stream(StreamPoolManager.instance().lora_stream)
     return
 
 
