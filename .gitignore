@@ -203,5 +203,6 @@ benchmarks/*.json
 # Linting
 actionlint
 shellcheck*/
-profile_nsys.nsys-rep
-profile_nsys.qdstrm
+*.nsys-rep
+*.qdstrm
+.profiling_results/
