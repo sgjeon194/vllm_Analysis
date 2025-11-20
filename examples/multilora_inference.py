@@ -16,6 +16,7 @@ from vllm.stream_pool_manager import StreamPoolManager
 
 import torch
 import time
+import argparse
 
 def create_test_prompts(
         lora_path: str
@@ -100,7 +101,7 @@ def process_requests(engine: LLMEngine,
     request_id = 0
     loop = 0
     while test_prompts or engine.has_unfinished_requests():
-    # while test_prompts:
+    #while test_prompts:
         if test_prompts:
             prompt, sampling_params, lora_request = test_prompts.pop(0)
             engine.add_request(str(request_id),
@@ -109,8 +110,8 @@ def process_requests(engine: LLMEngine,
                                lora_request=lora_request)
             request_id += 1
 
-    # step = 0
-    # while engine.has_unfinished_requests():
+    #step = 0
+    #while engine.has_unfinished_requests():
         torch.cuda.nvtx.range_push("Step")
         request_outputs: List[RequestOutput] = engine.step()
         torch.cuda.nvtx.range_pop()
@@ -151,18 +152,29 @@ def initialize_engine(batch_size : int, prompt_len : int) -> LLMEngine:
                              max_num_seqs=batch_size,
                              max_model_len=prompt_len + 10,
                              max_num_batched_tokens=batch_size * (prompt_len + 10),
-                             gpu_memory_utilization=0.9,
+                             gpu_memory_utilization=0.8,
                              enable_chunked_prefill=False,
-                             enforce_eager=True
+                             enforce_eager=False
     )
     return LLMEngine.from_engine_args(engine_args)
 
 
 def main():
-    """Main function that sets up and runs the prompt processing."""
-    batch_size = 512
-    prompt_len = 128
+    parser = argparse.ArgumentParser()
 
+    # 인자 추가
+    parser.add_argument("--batch_size", type=int, default=1, help="batch size of decode")
+    parser.add_argument("--lin", type=int, default=256, help="prompt length of each request")
+    
+    args = parser.parse_args()
+    
+    """Main function that sets up and runs the prompt processing."""
+    batch_size = args.batch_size
+    prompt_len = args.lin
+
+    print("batch_size:", args.batch_size)
+    print("prompt_len:", args.lin)
+    
     #torch.cuda.nvtx.range_push("Initializing engine")
     engine = initialize_engine(batch_size, prompt_len)
     #torch.cuda.nvtx.range_pop()
@@ -170,7 +182,7 @@ def main():
     # time.sleep(60)
     
     # lora_path = snapshot_download(repo_id="yard1/llama-2-7b-sql-lora-test")
-    lora_path = snapshot_download(repo_id="RikiyaT/Meta-Llama-3.1-8B-LoRA-test")
+    lora_path = snapshot_download(repo_id="crypto-lab/llama31-8b-instruct-bitcoin-lora-sft")
     #test_prompts = create_test_prompts(lora_path)
     
 
