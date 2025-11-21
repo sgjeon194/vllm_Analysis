@@ -12,7 +12,7 @@ while [ $i -le 256 ]
 do
     padded_i=$(printf "%03d" $i)
     echo "Running with batch_size=$i"
-    sudo -E /usr/local/cuda/bin/nsys profile -o .profiling_results/batch_size_${padded_i}_lin_256_all_different \
+    sudo -E /usr/local/cuda/bin/nsys profile -o .profiling_results/batch_size_${padded_i}_lin_256 \
         --gpu-metrics-device=0 --cpuctxsw=none --force-overwrite true \
         --trace=cuda,nvtx \
         --cuda-graph-trace=node \
