@@ -146,13 +146,13 @@ def initialize_engine(batch_size : int, prompt_len : int) -> LLMEngine:
     engine_args = EngineArgs(#model="meta-llama/Llama-2-7b-hf",
                              model="meta-llama/Llama-3.1-8B",
                              enable_lora=enable_lora,
-                             max_loras=32,
+                             max_loras=batch_size,
                              max_lora_rank=8,
-                             max_cpu_loras=64,
+                             max_cpu_loras=batch_size,
                              max_num_seqs=batch_size,
                              max_model_len=prompt_len + 10,
                              max_num_batched_tokens=batch_size * (prompt_len + 10),
-                             gpu_memory_utilization=0.8,
+                             gpu_memory_utilization=0.93,
                              enable_chunked_prefill=False,
                              enforce_eager=False
     )
@@ -163,7 +163,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     # 인자 추가
-    parser.add_argument("--batch_size", type=int, default=1, help="batch size of decode")
+    parser.add_argument("--batch_size", type=int, default=256, help="batch size of decode")
     parser.add_argument("--lin", type=int, default=256, help="prompt length of each request")
     
     args = parser.parse_args()
@@ -184,10 +184,9 @@ def main():
     # lora_path = snapshot_download(repo_id="yard1/llama-2-7b-sql-lora-test")
     lora_path = snapshot_download(repo_id="crypto-lab/llama31-8b-instruct-bitcoin-lora-sft")
     #test_prompts = create_test_prompts(lora_path)
-    
 
-    #test_prompts = create_dummy_test_prompts(batch_size, prompt_len, "")
-    test_prompts = create_dummy_test_prompts(batch_size, prompt_len, lora_path, 1)
+    #test_prompts = create_dummy_test_prompts(batch_size, prompt_len, "", 1)
+    test_prompts = create_dummy_test_prompts(batch_size, prompt_len, lora_path, batch_size)
     
     process_requests(engine, test_prompts)
     print(batch_size)
