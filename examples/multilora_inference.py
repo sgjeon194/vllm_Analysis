@@ -15,6 +15,7 @@ from vllm.lora.request import LoRARequest
 from vllm.stream_pool_manager import StreamPoolManager
 
 import torch
+import numpy as np
 import time
 import argparse
 
@@ -62,12 +63,36 @@ def create_test_prompts(
         ),
     ]
     
-def create_dummy_test_prompts(
+def create_dummy_test_prompts_lora_distinct(
     number_of_requests : int,
     prompt_len : int,
-    lora_path: str,
-    using_lora_num: Optional[int],
-) -> List[Tuple[str, SamplingParams, Optional[LoRARequest]]]:
+    lora_path: str) -> List[Tuple[str, SamplingParams, Optional[LoRARequest]]]:
+    requests = []
+    
+    embedded_prompt_len = prompt_len - 1
+    prompt = "Hi" + (embedded_prompt_len - 1) * " Hi"
+    #prompt = "The quick brown fox"
+    sample_parms = SamplingParams(temperature=0.0,
+                           logprobs=1,
+                           prompt_logprobs=1,
+                           max_tokens=128,
+                           stop_token_ids=[32003])
+
+    arr = np.arange(number_of_requests)
+    np.random.shuffle(arr)
+    using_lora_ids = arr.tolist()
+    using_loras = [LoRARequest(f"sql-lora {i+1}", i+1, lora_path) for i in using_lora_ids]
+        
+    for i in range(number_of_requests):
+        request = (prompt, sample_parms, using_loras[i])
+        requests.append(request)
+        
+    return requests
+
+def create_dummy_test_prompts_lora_uniform(number_of_requests : int,
+    prompt_len : int,
+    lora_path: str) -> List[Tuple[str, SamplingParams, Optional[LoRARequest]]]:
+    
     requests = []
     
     embedded_prompt_len = prompt_len - 1
@@ -79,13 +104,44 @@ def create_dummy_test_prompts(
                            max_tokens=128,
                            stop_token_ids=[32003])
     
-    if lora_path == "":
-        using_loras = [None] * number_of_requests
-    else:
-        lora_per_used = (number_of_requests / using_lora_num)
+    # lora_per_used = int(number_of_requests**0.5)
+    # using_lora_ids = np.repeat(np.arange(lora_per_used), lora_per_used)
+    # np.random.shuffle(using_lora_ids)
+    
+    k = int(number_of_requests**0.5)
+    using_lora_ids = np.repeat(np.arange(k), int(number_of_requests/k))
+    using_lora_ids = np.concatenate((using_lora_ids, np.arange(int(number_of_requests%k))))
+    np.random.shuffle(using_lora_ids)
+    
+    using_lora_ids = using_lora_ids.tolist()
+    
+    using_loras = [LoRARequest(f"sql-lora {i}", i+1, lora_path) for i in using_lora_ids]
         
-        using_lora_ids = [int(i / lora_per_used) for i in range(number_of_requests)]
-        using_loras = [LoRARequest(f"sql-lora {i+1}", i+1, lora_path) for i in using_lora_ids]
+    for i in range(number_of_requests):
+        request = (prompt, sample_parms, using_loras[i])
+        requests.append(request)
+        
+    return requests
+
+def create_dummy_test_prompts_lora_identical(
+    number_of_requests : int,
+    prompt_len : int,
+    lora_path: str,
+) -> List[Tuple[str, SamplingParams, Optional[LoRARequest]]]:
+    requests = []
+    
+    embedded_prompt_len = prompt_len - 1
+    prompt = "Hi" + (embedded_prompt_len - 1) * " Hi"
+    sample_parms = SamplingParams(temperature=0.0,
+                           logprobs=1,
+                           prompt_logprobs=1,
+                           max_tokens=128,
+                           stop_token_ids=[32003])
+    
+    # if lora_path == "":
+    #     using_loras = [None] * number_of_requests
+    # else:
+    using_loras = [LoRARequest(f"sql-lora 0", 1, lora_path)] * number_of_requests
         
     for i in range(number_of_requests):
         request = (prompt, sample_parms, using_loras[i])
@@ -163,8 +219,8 @@ def main():
     parser = argparse.ArgumentParser()
 
     # 인자 추가
-    parser.add_argument("--batch_size", type=int, default=256, help="batch size of decode")
-    parser.add_argument("--lin", type=int, default=256, help="prompt length of each request")
+    parser.add_argument("--batch_size", type=int, default=32, help="batch size of decode")
+    parser.add_argument("--lin", type=int, default=64, help="prompt length of each request")
     
     args = parser.parse_args()
     
@@ -185,8 +241,9 @@ def main():
     lora_path = snapshot_download(repo_id="crypto-lab/llama31-8b-instruct-bitcoin-lora-sft")
     #test_prompts = create_test_prompts(lora_path)
 
-    #test_prompts = create_dummy_test_prompts(batch_size, prompt_len, "", 1)
-    test_prompts = create_dummy_test_prompts(batch_size, prompt_len, lora_path, batch_size)
+    #test_prompts = create_dummy_test_prompts_lora_distinct(batch_size, prompt_len, "", 1)
+    #test_prompts = create_dummy_test_prompts_lora_distinct(batch_size, prompt_len, lora_path)
+    test_prompts = create_dummy_test_prompts_lora_uniform(batch_size, prompt_len, lora_path)
     
     process_requests(engine, test_prompts)
     print(batch_size)
